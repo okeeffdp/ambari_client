@@ -209,51 +209,6 @@ class AmbariClient(object):
         print("Services are now being started. Please be patient...")
         return(res)
 
-    def restart_service(self, service, timeout=25):
-        """
-        Restart a given service.
-        Nothing returned.
-        """
-        cur_state = self.get_service_state(service)
-        if cur_state != "INSTALLED":
-            res = self.stop_service(service)
-
-        print(res)
-        print(res.json())
-
-        # Wait until the service has stopped.
-        while cur_state != "INSTALLED":
-            time.sleep(1)
-            cur_state = self.get_service_state(service)
-
-        # Sleep a little before immedately starting the service
-        time.sleep(5)
-
-        res = self.start_service(service)
-        print(res)
-        print(res.json())
-        while not res.ok:
-            print(res)
-            print(res.json())
-            time.sleep(2)
-            res = self.start_service(service)
-
-        # Wait until the state has changed.
-        retry_count = 0
-        while cur_state != "STARTED":
-            if (retry_count % timeout == 0) and (cur_state != "STARTING"):
-                print("Retrying...")
-                res = self.start_service(service)
-                print(res)
-                print(res.json())
-
-            time.sleep(1)
-            cur_state = self.get_service_state(service)
-            retry_count += 1
-
-        print(cur_state)
-        print("Restart complete.")
-
     @staticmethod
     def make_conf_note(**kwargs):
 
@@ -278,31 +233,15 @@ class AmbariClient(object):
         conf : dict,
             A dictionary with all the configurations and values.
         """
+        tag = self.get_current_tag(conf_name)
+        conf = self.get_configurations(conf_name, tag)
 
-        bp = self.get_blueprint()
-
-        for conf in bp["configurations"]:
-            if conf_name in conf:
-                break
-
-        properties = conf[conf_name]["properties"]
+        properties = conf["properties"]
         for k in kwargs:
             if k in properties:
                 properties[k] = kwargs[k]
             else:
                 print("WARNING: Key, {}, not found in {}. Skipping.".format(k, conf_name))
-
-        host_groups = [
-         ("%HOSTGROUP::host_group_1%", "dok31.northeurope.cloudapp.azure.com"),
-         ("%HOSTGROUP::host_group_2%", "dok32.northeurope.cloudapp.azure.com"),
-         ("%HOSTGROUP::host_group_3%", "dok33.northeurope.cloudapp.azure.com"),
-         ("%HOSTGROUP::host_group_4%", "dok34.northeurope.cloudapp.azure.com"),
-        ]
-
-        for prop in properties:
-            if "HOSTGROUP::" in properties[prop]:
-                for hg in host_groups:
-                    properties[prop] = properties[prop].replace(hg[0], hg[1])
 
         return(properties)
 
@@ -321,13 +260,13 @@ class AmbariClient(object):
         tag : string
             The tag for the current configurations version.
         """
-        payload = {"fields": "Clusters/desired_configs{}".format(conf_name)}
+        payload = {"fields": "Clusters/desired_configs/{}".format(conf_name)}
 
         response = requests.get(self.endpoint,
                                 auth=self.auth,
                                 headers=self.hdrs,
                                 params=payload)
-        tag = response["Clusters"]["desired_configs"][conf_name]["tag"]
+        tag = response.json()["Clusters"]["desired_configs"][conf_name]["tag"]
         return(tag)
 
     def get_configurations(self, conf_name, tag):
@@ -350,7 +289,7 @@ class AmbariClient(object):
         payload = {"type": conf_name, "tag": tag}
         response = requests.get(self.endpoint + "configurations",
                                 auth=self.auth,
-                                headers=self.headers,
+                                headers=self.hdrs,
                                 params=payload)
         confs = response.json()["items"][0]
         return(confs)
