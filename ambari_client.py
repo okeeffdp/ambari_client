@@ -8,8 +8,6 @@ Description:
 A class containing some simple functions that simplify the interaction
 between you and the Ambari API.
 '''
-import getpass
-import sys
 import time
 import random
 import json
@@ -391,41 +389,42 @@ class AmbariClient(object):
         return([nodename.rstrip(":50010") for nodename in json.loads(live_nodes)])
 
 
-def get_components_states(service):
+def get_components_states(client, service):
     """
     List the states of each component for a given service.
     List contains tuples of component name, and state.
     """
     states = []
-    for c in amc.get_components(service):
-        states.append((c, amc.get_component_state(c)))
+    for c in client.get_components(service):
+        states.append((c, client.get_component_state(c)))
     return(states)
 
 if __name__ == '__main__':
     nnode = "dok31.northeurope.cloudapp.azure.com"
     p = 8080
     clr_name = "dokcl3"
-    cred = ("admin", getpass.getpass("Ambari password: "))
+    cred = ("admin", input("Ambari password: "))
     hdrs = {"X-Requested-By": "ambari"}
 
-    try:
-        filename = sys.argv[1]
-    except IndexError as e:
-        raise(ValueError("Usage: python ambari_client.py <filename>"))
-        sys.exit(1)
+    print(cred)
+    # try:
+    #     filename = sys.argv[1]
+    # except IndexError as e:
+    #     raise(ValueError("Usage: python ambari_client.py <filename>"))
+    #     sys.exit(1)
 
-    amc = AmbariClient(nnode, p, clr_name, cred, hdrs)
+    # amc = AmbariClient(nnode, p, clr_name, cred, hdrs)
 
-    with open(filename, "a") as f:
-        # Change the configurations and restart the services
-        note, _ = amc.put_hive_site()
-        f.write(note + "\n")
+    # with open(filename, "a") as f:
+    #     # Change the configurations and restart the services
+    #     note, _ = amc.put_hive_site()
+    #     f.write(note + "\n")
 
-        # Changing a configuration in HDFS has the knock on affect of
-        # requiring a restart of YARN and MAPREDUCE2
-        note, _ = amc.put_yarn_site()
-        f.write(note + "\n")
-        note, _ = amc.put_hdfs_site()
-        f.write(note + "\n")
+    #     # Changing a configuration in HDFS has the knock on affect of
+    #     # requiring a restart of YARN and MAPREDUCE2
+    #     note, _ = amc.put_yarn_site()
+    #     f.write(note + "\n")
+    #     note, _ = amc.put_hdfs_site()
+    #     f.write(note + "\n")
 
-    amc.restart_all_services()
+    # amc.restart_all_services()
