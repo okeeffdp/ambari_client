@@ -8,6 +8,7 @@ Description:
 A class containing some simple functions that simplify the interaction
 between you and the Ambari API.
 '''
+import sys
 import time
 import random
 import json
@@ -406,25 +407,24 @@ if __name__ == '__main__':
     cred = ("admin", input("Ambari password: "))
     hdrs = {"X-Requested-By": "ambari"}
 
-    print(cred)
-    # try:
-    #     filename = sys.argv[1]
-    # except IndexError as e:
-    #     raise(ValueError("Usage: python ambari_client.py <filename>"))
-    #     sys.exit(1)
+    try:
+        filename = sys.argv[1]
+    except IndexError as e:
+        raise(ValueError("Usage: python ambari_client.py <filename>"))
+        sys.exit(1)
 
-    # amc = AmbariClient(nnode, p, clr_name, cred, hdrs)
+    amc = AmbariClient(nnode, p, clr_name, cred, hdrs)
 
-    # with open(filename, "a") as f:
-    #     # Change the configurations and restart the services
-    #     note, _ = amc.put_hive_site()
-    #     f.write(note + "\n")
+    with open(filename, "a") as f:
+        # Change the configurations and restart the services
+        note, _ = amc.put_hive_site()
+        f.write(note + "\n")
 
-    #     # Changing a configuration in HDFS has the knock on affect of
-    #     # requiring a restart of YARN and MAPREDUCE2
-    #     note, _ = amc.put_yarn_site()
-    #     f.write(note + "\n")
-    #     note, _ = amc.put_hdfs_site()
-    #     f.write(note + "\n")
+        # Changing a configuration in HDFS has the knock on affect of
+        # requiring a restart of YARN and MAPREDUCE2
+        note, _ = amc.put_yarn_site()
+        f.write(note + "\n")
+        note, _ = amc.put_hdfs_site()
+        f.write(note + "\n")
 
-    # amc.restart_all_services()
+    amc.restart_all_services()
