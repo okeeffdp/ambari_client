@@ -39,7 +39,9 @@ class AmbariClient(object):
         self.cluster_name = cluster_name
         self.auth = auth
         self.hdrs = headers
-        self.endpoint = "http://{}:{}/api/v1/clusters/{}/".format(self.namenode, self.port, self.cluster_name)
+        self.endpoint = "http://{}:{}/api/v1/clusters/{}/".format(self.namenode,
+                                                                  self.port,
+                                                                  self.cluster_name)
         self.services = self.get_services()
         self.components = self.get_components()
 
@@ -77,14 +79,22 @@ class AmbariClient(object):
         self.services = self.get_services()
 
     def _has_component(self, component):
-        """Checks component is in self.components, if not found raises a ValueError"""
+        """
+        Checks `component` is in self.components,
+        if not found raises a ValueError
+        """
         if component not in self.components:
-            raise(ValueError("{} is not found in components.".format(component)))
+            error_msg = "{} is not found in components.".format(component)
+            raise(ValueError(error_msg))
 
     def _has_service(self, service):
-        """Checks service is in self.services, if not found raises a ValueError"""
+        """
+        Checks `service` is in self.services,
+        if not found raises a ValueError
+        """
         if service not in self.services:
-            raise(ValueError("{} is not found in services.".format(service)))
+            error_msg = "{} is not found in services.".format(service)
+            raise(ValueError(error_msg))
 
     def get_service_info(self, service):
         """Return the all the info for a service"""
@@ -368,14 +378,17 @@ class AmbariClient(object):
 
         return(response.json())
 
-    def query_jmx(self, host=None, port=8080, params=None):
+    def get_jmx(self, host=None, port=8080, params=None):
         """Query Ambari Metrics"""
         host = host if host else self.namenode
-
+        payload = {"qry": params} if params else None
         url = "http://{}:{}/jmx".format(host, port)
 
-        response = requests.get(url, auth=self.auth,
-                                headers=self.hdrs, params=params)
+        response = requests.get(url,
+                                auth=self.auth,
+                                headers=self.hdrs,
+                                params=payload)
+
         return(response)
 
     def get_live_nodes(self):
@@ -383,8 +396,8 @@ class AmbariClient(object):
         Get the list of live Nodes from the cluster.
         Requires port 50070 to be open.
         """
-        payload = {"qry": "Hadoop:service=NameNode,name=NameNodeInfo"}
-        response = self.query_jmx(port=50070, params=payload)
+        payload = "Hadoop:service=NameNode,name=NameNodeInfo"
+        response = self.get_jmx(port=50070, params=payload)
 
         live_nodes = response.json()["beans"][0]["LiveNodes"]
         return([nodename.rstrip(":50010") for nodename in json.loads(live_nodes)])
