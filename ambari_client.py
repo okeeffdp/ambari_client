@@ -437,7 +437,7 @@ if __name__ == '__main__':
         # requiring a restart of YARN and MAPREDUCE2
         note, _ = amc.put_yarn_site()
         f.write(note + "\n")
-        note, _ = amc.put_hdfs_site()
-        f.write(note + "\n")
+        # note, _ = amc.put_hdfs_site()
+        # f.write(note + "\n")
 
     amc.restart_all_services()
