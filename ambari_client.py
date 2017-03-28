@@ -64,7 +64,10 @@ class AmbariClient(object):
         response = requests.get(url, headers=self.hdrs, auth=self.auth)
         # If a service is specified, filter for relevant components
         if service:
-            components = [i["ServiceComponentInfo"]["component_name"] for i in response.json()["items"] if i["ServiceComponentInfo"]["service_name"] == service]
+            components = []
+            for i in response.json()["items"]:
+                if i["ServiceComponentInfo"]["service_name"] == service:
+                    components.append(i["ServiceComponentInfo"]["component_name"])
             return(components)
 
         components = [i["ServiceComponentInfo"]["component_name"] for i in response.json()["items"]]
@@ -113,7 +116,9 @@ class AmbariClient(object):
         return(state)
 
     def get_services_states(self):
-        """Return a list of states for all the services installed on the cluster"""
+        """
+        Return a list of states for all the services installed on the cluster
+        """
         return([self.get_service_state(s) for s in self.services])
 
     def get_component_info(self, component):
@@ -140,7 +145,8 @@ class AmbariClient(object):
         # Security Check
         self._has_service(service)
 
-        payload = json.dumps({"RequestInfo": {"context": "Stopping {}".format(service)},
+        payload = json.dumps({"RequestInfo": {
+                              "context": "Stopping {}".format(service)},
                               "Body": {"ServiceInfo": {"state": "INSTALLED"}}})
         url = self.endpoint + "services/{}".format(service)
         response = requests.put(url,
@@ -160,7 +166,8 @@ class AmbariClient(object):
         # Security Check
         self._has_service(service)
 
-        payload = json.dumps({"RequestInfo": {"context": "Starting {}".format(service)},
+        payload = json.dumps({"RequestInfo": {
+                              "context": "Starting {}".format(service)},
                               "Body": {"ServiceInfo": {"state": "STARTED"}}})
         url = self.endpoint + "services/{}".format(service)
         response = requests.put(url,
@@ -305,17 +312,18 @@ class AmbariClient(object):
 
     def put_new_conf(self, conf_name, **kwargs):
         """
-        Make a put request to the ambari server to update a configuration group with new values.
+        Make a put request to the ambari server
+        to update a configuration group with new values.
         """
         config_note = self.make_conf_note(**kwargs)
         curr_time = int(time.time())
 
         payload = json.dumps([{"Clusters": {
             "desired_config": [{
-              "tag": "version{}".format(curr_time),
-              "type": conf_name,
-              "properties": self.modify_configurations(conf_name, **kwargs),
-              "service_config_version_note": config_note}]}}])
+                "tag": "version{}".format(curr_time),
+                "type": conf_name,
+                "properties": self.modify_configurations(conf_name, **kwargs),
+                "service_config_version_note": config_note}]}}])
 
         # print(payload)
         # response = None
@@ -413,6 +421,7 @@ def get_components_states(client, service):
         states.append((c, client.get_component_state(c)))
     return(states)
 
+
 if __name__ == '__main__':
     nnode = "dok31.northeurope.cloudapp.azure.com"
     p = 8080
@@ -437,7 +446,8 @@ if __name__ == '__main__':
         # requiring a restart of YARN and MAPREDUCE2
         note, _ = amc.put_yarn_site()
         f.write(note + "\n")
-        # note, _ = amc.put_hdfs_site()
-        # f.write(note + "\n")
+
+        note, _ = amc.put_hdfs_site()
+        f.write(note + "\n")
 
     amc.restart_all_services()
