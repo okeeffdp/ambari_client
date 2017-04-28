@@ -43,6 +43,11 @@ import itertools
 import requests
 
 
+# Handle python 2 and python 3 versions
+if sys.version_info.major == 2:
+    input = raw_input
+
+
 class AmbariClient(object):
     """ A class containing some simple functions that simplify the interaction
         between you and the Ambari API.
@@ -111,8 +116,13 @@ class AmbariClient(object):
         response = requests.put(url, auth=self.auth, headers=self.hdrs, data=payload)
         return(response)
 
-    def delete(self, url, payload):
-        response = requests.delete(url, auth=self.auth, headers=self.hdrs, data=payload)
+    def post(self, url, payload=None):
+        payload = json.dumps(payload) if isinstance(payload, dict) else payload
+        response = requests.post(url, auth=self.auth, headers=self.hdrs, data=payload)
+        return(response)
+
+    def delete(self, url):
+        response = requests.delete(url, auth=self.auth, headers=self.hdrs)
         return(response)
 
     def update_components(self):
@@ -125,19 +135,21 @@ class AmbariClient(object):
 
     def delete_component(self, component, host):
         url = self.endpoint + "hosts/{}/host_components/{}".format(host, component)
-        data = {}
-        res = self.delete(url, data)
+        res = self.delete(url)
         return(res)
 
     def add_component(self, component, host):
-        pass
+        url = self.endpoint + "hosts/{}/host_components/{}".format(host, component)
+        res = self.post(url)
+        return(res)
 
     def delete_service(self, service):
         pass
 
     def change_component_state(self, component, host, new_state):
         url = self.endpoint + "hosts/{}/host_components/{}".format(host, component)
-        data = {"HostRoles": {"state": new_state}}
+        data = {"RequestInfo": {"context": "Change {} state".format(component)},
+                "HostRoles": {"state": new_state}}
         res = self.put(url, data)
         return(res)
 
@@ -203,14 +215,24 @@ class AmbariClient(object):
         if not self.component_on_host(component_name, old_host):
             msg = "Component {} not found on host {}"
             raise(ValueError(msg.format(component_name, old_host)))
+        input("Process completed?")
 
         # Stop the service before deleting the component
         res = self.stop_component(component_name, old_host)
         if not res.ok:
+            print("Failed to stop component")
             return(False)
+        input("Process completed?")
 
-        delete = self.delete_component(component_name, old_host)
+        #  Add the component
         install = self.add_component(component_name, new_host)
+        input("Finished Adding component?")
+        state_change = self.change_component_state(component_name, new_host, "INSTALLED")
+        input("Process completed?")
+        #  Delete the component
+        delete = self.delete_component(component_name, old_host)
+        input("Finished Deleting component?")
+        state_change = self.start_component(component_name, new_host)
 
         return(delete.ok and install.ok)
 
