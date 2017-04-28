@@ -7,6 +7,14 @@ Company Website: https://www.bluemetrix.com/
 Description:
 A class containing some simple functions that simplify the interaction
 between you and the Ambari API.
+
+NOTE:
+
+Add curl -u admin:admin -H "X-Requested-By: ambari" http://dok31.northeurope.cloudapp.azure.com:8080/api/v1/clusters/dokcl3/alert_definitions/
+Add method to add alert definition
+Add `def query([get|post|delete]):`
+
+
 '''
 import sys
 import time
@@ -73,6 +81,22 @@ class AmbariClient(object):
         components = [i["ServiceComponentInfo"]["component_name"] for i in response.json()["items"]]
         return(components)
 
+    def query(self, rtype):
+        pass
+
+    def get(self, url):
+        response = requests.get(url, auth=self.auth, headers=self.hdrs)
+        return(response)
+
+    def put(self, url, payload):
+        response = requests.put(url, auth=self.auth, headers=self.hdrs, data=payload)
+        return(response)
+
+    def delete(self, url, payload):
+        payload = json.dumps(payload) if isinstance(payload, dict) else payload
+        response = requests.delete(url, auth=self.auth, headers=self.hdrs, data=payload)
+        return(response)
+
     def update_components(self):
         """Update the list of currently installed components."""
         self.components = self.get_components()
@@ -80,6 +104,97 @@ class AmbariClient(object):
     def update_services(self):
         """Update the list of currently installed services."""
         self.services = self.get_services()
+
+    def delete_component(self, component, host):
+        url = self.endpoint + "hosts/{}/host_components/{}".format(host, component)
+        data = {}
+        res = self.delete(url, data)
+        return(res)
+
+    def add_component(self, component, host):
+        pass
+
+    def delete_service(self, service):
+        pass
+
+    def change_component_state(self, component, host, new_state):
+        url = self.endpoint + "hosts/{}/host_components/{}".format(host, component)
+        data = {"HostRoles": {"state": new_state}}
+        res = self.put(url, data)
+        return(res)
+
+    def start_component(self, component, host):
+        res = self.change_component_state(component, host, "STARTED")
+        return(res)
+
+    def stop_component(self, component, host):
+        res = self.change_component_state(component, host, "INSTALLED")
+        return(res)
+
+    def component_on_host(self, component_name, host):
+        """
+        NOTE: Temporary method
+        Check is the component `component_name` on a given host.
+
+        Parameters
+        ----------
+        component_name : str
+            The name of the component to be moved
+            (Examples: WEBHCAT_SERVER, NFS_GATEWAY).
+        host : str
+            The hostname or ip address of the Host
+
+        Returns
+        -------
+        on_host : bool
+            bool indicating if the component is on the given host
+        """
+        on_host = True
+        url = self.endpoint + "hosts/{}/host_components/".format(host)
+        res = self.get(url)
+        host_components = [i["HostRoles"]["component_name"] for i in res.json()["items"]]
+        on_host = component_name in host_components
+        return(on_host)
+
+    def move_component(self, component_name, old_host, new_host):
+        """
+        Given a Hadoop Component, `component_name`, move that component from `old_host` to
+        `new_host`.
+
+        Parameters
+        ----------
+        component_name : str
+            The name of the component to be moved
+            (Examples: WEBHCAT_SERVER, NFS_GATEWAY).
+        old_host : str
+            Hostname or ip address of the current host the component is installed on.
+        new_host : str
+            Hostname or ip address of the new host the component is to be installed on.
+
+        Returns
+        -------
+        status : bool,
+            A value representing success (True) or failure (False) of the move.
+        """
+        # Check is the component on the cluster
+        if component_name not in self.components:
+            msg = "Component {} not found.\n"
+            msg += "Please run the `update_components method` or check the spelling."
+            raise(ValueError(msg.format(component_name)))
+        # Check is the component on the old_host
+        if not self.component_on_host(component_name, old_host):
+            msg = "Component {} not found on host {}"
+            raise(ValueError(msg.format(component_name, old_host)))
+
+        # Stop the service before deleting the component
+        res = self.stop_component(component_name, old_host)
+        if not res.ok:
+            return(False)
+
+        delete = self.delete_component(component_name, old_host)
+        install = self.add_component(component_name, new_host)
+
+        return(delete.ok and install.ok)
 
     def _has_component(self, component):
         """
