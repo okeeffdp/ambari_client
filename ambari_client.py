@@ -8,12 +8,30 @@ Description:
 A class containing some simple functions that simplify the interaction
 between you and the Ambari API.
 
-NOTE:
+TODO:
 
-Add curl -u admin:admin -H "X-Requested-By: ambari" http://dok31.northeurope.cloudapp.azure.com:8080/api/v1/clusters/dokcl3/alert_definitions/
-Add method to add alert definition
-Add `def query([get|post|delete]):`
+1. Add curl -u admin:admin -H "X-Requested-By: ambari" \
+     http://dok31.northeurope.cloudapp.azure.com:8080/api/v1/clusters/dokcl3/alert_definitions/
+    Add method to add alert definition
 
+2. Add `def query([get|post|delete]):`
+
+3. Add ConfigParser (py2.6+) / configparser (py3.+) functionality to the programme
+    # Import ConfigParser
+    # from configparser import ConfigParser
+
+4. Add a proper command-line option parser like argparse
+    # import argparse
+
+5. Consider separating the more basic functionality from the complex stuff
+    Two objects or a sub object
+
+6. Simplify a lot of the functions by using decorators to improve the syntax
+
+7. You should replace requests with urllib or urllib2
+
+8. Add try/except/else/finally clauses to the script to handle errors,
+    and provide the user with stack traces of the error.
 
 '''
 import sys
@@ -89,11 +107,11 @@ class AmbariClient(object):
         return(response)
 
     def put(self, url, payload):
+        payload = json.dumps(payload) if isinstance(payload, dict) else payload
         response = requests.put(url, auth=self.auth, headers=self.hdrs, data=payload)
         return(response)
 
     def delete(self, url, payload):
-        payload = json.dumps(payload) if isinstance(payload, dict) else payload
         response = requests.delete(url, auth=self.auth, headers=self.hdrs, data=payload)
         return(response)
 
@@ -538,10 +556,17 @@ def get_components_states(client, service):
 
 
 if __name__ == '__main__':
+    #  Insert your ambari server hostname here
+    # nnode = <hostname>
     nnode = "dok31.northeurope.cloudapp.azure.com"
+    # Add port number for ambari
+    # p = 8080  # 8080 is default
     p = 8080
+    # Add the name of the cluster (assigned during installation)
     clr_name = "dokcl3"
+    # Provide the password
     cred = ("admin", input("Ambari password: "))
+    # HEader information required by ambari
     hdrs = {"X-Requested-By": "ambari"}
 
     try:
