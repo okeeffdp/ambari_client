@@ -205,6 +205,14 @@ class AmbariClient(object):
         -------
         status : bool,
             A value representing success (True) or failure (False) of the move.
+
+        TODO
+        ----
+        * Drop the input commands for something more elegant and more automated.
+        * Handle errors elsewhere
+        * Method should check what tasks have already been completed
+           (such as adding the component to new server).
+
         """
         # Check is the component on the cluster
         if component_name not in self.components:
@@ -215,25 +223,29 @@ class AmbariClient(object):
         if not self.component_on_host(component_name, old_host):
             msg = "Component {} not found on host {}"
             raise(ValueError(msg.format(component_name, old_host)))
-        input("Process completed?")
 
         # Stop the service before deleting the component
         res = self.stop_component(component_name, old_host)
         if not res.ok:
             print("Failed to stop component")
             return(False)
-        input("Process completed?")
+        input("Component stopped?")
 
         #  Add the component
         install = self.add_component(component_name, new_host)
         input("Finished Adding component?")
+
         state_change = self.change_component_state(component_name, new_host, "INSTALLED")
-        input("Process completed?")
+        state_change.raise_for_status()
+        input("Component installed?")
+
         #  Delete the component
         delete = self.delete_component(component_name, old_host)
         input("Finished Deleting component?")
-        state_change = self.start_component(component_name, new_host)
 
+        state_change = self.start_component(component_name, new_host)
+        state_change.raise_for_status()
+        input("Component started")
         return(delete.ok and install.ok)
 
     def _has_component(self, component):
